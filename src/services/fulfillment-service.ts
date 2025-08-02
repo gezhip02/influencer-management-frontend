@@ -1,54 +1,113 @@
 import { ApiClient } from './api-client';
-import { FulfillmentRecord, QueryParams, PaginatedResponse } from '@/types';
+import { 
+  FulfillmentIndexResponse,
+  FulfillmentSaveRequest,
+  FulfillmentUpdateRequest,
+  FulfillmentListRequest,
+  FulfillmentListResponse,
+  FulfillmentReportRequest,
+  FulfillmentReportResponse,
+  FulfillmentDetailsRequest,
+  FulfillmentDetailsResponse,
+  FulfillmentListItem,
+  FulfillmentDeleteRequest,
+  FulfillmentOperationResponse
+} from '@/types';
 
 export const fulfillmentService = {
-  // 获取履约记录列表
-  async getFulfillmentRecords(params?: QueryParams): Promise<PaginatedResponse<FulfillmentRecord>> {
-    return ApiClient.get('/fulfillment-records', params);
+  // 获取履约首页数据
+  async getFulfillmentIndex(): Promise<FulfillmentIndexResponse> {
+    return ApiClient.post('/fulfillment_index', {});
   },
 
-  // 获取单个履约记录
-  async getFulfillmentRecordById(id: string): Promise<FulfillmentRecord> {
-    return ApiClient.get(`/fulfillment-records/${id}`);
+  // 获取履约列表
+  async getFulfillmentList(params: FulfillmentListRequest): Promise<FulfillmentListResponse> {
+    const cleanParams = {
+      page: Number(params.page) || 1,
+      page_size: Number(params.page_size) || 10,
+      search: params.search?.trim() || '',
+      status: params.status?.trim() || '',
+      priority: Number(params.priority) || 0,
+      start_time: Number(params.start_time) || 0,
+      end_time: Number(params.end_time) || 0,
+      handler_user_id: Number(params.handler_user_id) || 0,
+      ...(params.id && { id: Number(params.id) })
+    };
+    return ApiClient.post('/fulfillment_list', cleanParams);
   },
 
-  // 创建履约记录
-  async createFulfillmentRecord(data: Partial<FulfillmentRecord>): Promise<FulfillmentRecord> {
-    return ApiClient.post('/fulfillment-records', data);
+  // 获取单个履约单详情
+  async getFulfillmentById(id: number): Promise<FulfillmentListItem> {
+    return ApiClient.post('/fulfillment_list', { 
+      page: 1, 
+      page_size: 1, 
+      search: '', 
+      status: '', 
+      priority: 0, 
+      start_time: 0, 
+      end_time: 0, 
+      handler_user_id: 0,
+      id: Number(id) 
+    });
   },
 
-  // 更新履约记录
-  async updateFulfillmentRecord(id: string, data: Partial<FulfillmentRecord>): Promise<FulfillmentRecord> {
-    return ApiClient.put(`/fulfillment-records/${id}`, data);
+  // 创建履约单
+  async saveFulfillment(data: FulfillmentSaveRequest): Promise<FulfillmentOperationResponse> {
+    const cleanData = {
+      influencer_id: Number(data.influencer_id),
+      cooperation_plan_id: Number(data.cooperation_plan_id),
+      priority: Number(data.priority),
+      remark: data.remark?.trim() || '',
+      product_id: Number(data.product_id)
+    };
+    return ApiClient.post('/fulfillment_save', cleanData);
   },
 
-  // 删除履约记录
-  async deleteFulfillmentRecord(id: string): Promise<void> {
-    return ApiClient.delete(`/fulfillment-records/${id}`);
+  // 更新履约单状态
+  async updateFulfillment(data: FulfillmentUpdateRequest): Promise<FulfillmentOperationResponse> {
+    const cleanData = {
+      id: Number(data.id),
+      remark: data.remark?.trim() || '',
+      status: data.status?.trim() || '',
+      status_remark: data.status_remark?.trim() || '',
+      tags: data.tags?.trim() || '',
+      shipping_no: data.shipping_no?.trim() || '',
+      received_at: Number(data.received_at) || 0,
+      video_url: data.video_url?.trim() || '',
+      video_id: data.video_id?.trim() || '',
+      ad_code: data.ad_code?.trim() || '',
+      ads_roi: Number(data.ads_roi) || 0
+    };
+    return ApiClient.post('/fulfillment_update', cleanData);
   },
 
-  // 更新履约状态
-  async updateFulfillmentStatus(id: string, status: string, comment?: string): Promise<FulfillmentRecord> {
-    return ApiClient.post(`/fulfillment-records/${id}/status`, { status, comment });
+  // 删除履约单
+  async deleteFulfillment(id: number): Promise<FulfillmentOperationResponse> {
+    const deleteData = { id: Number(id) };
+    return ApiClient.post('/fulfillment_delete', deleteData);
   },
 
-  // 获取状态日志
-  async getStatusLogs(id: string): Promise<any[]> {
-    return ApiClient.get(`/fulfillment-records/${id}/status-logs`);
+  // 获取履约单报表
+  async getFulfillmentReport(params: FulfillmentReportRequest): Promise<FulfillmentReportResponse> {
+    const cleanParams = {
+      report_type: Number(params.report_type),
+      ...(params.user_id && { user_id: Number(params.user_id) }),
+      ...(params.start_time && { start_time: Number(params.start_time) }),
+      ...(params.end_time && { end_time: Number(params.end_time) })
+    };
+    return ApiClient.post('/fulfillment_report', cleanParams);
   },
 
-  // 批量操作标签
-  async batchUpdateTags(recordIds: string[], tagIds: string[]): Promise<void> {
-    return ApiClient.post('/fulfillment-records/batch-tags', { recordIds, tagIds });
-  },
-
-  // 获取时效性数据
-  async getTimelinessStats(params?: QueryParams): Promise<any> {
-    return ApiClient.get('/fulfillment-records/timeliness', params);
-  },
-
-  // 获取绩效统计
-  async getPerformanceStats(params?: QueryParams): Promise<any> {
-    return ApiClient.get('/fulfillment-records/performance/top-performers', params);
+  // 获取履约单明细列表
+  async getFulfillmentDetails(params: FulfillmentDetailsRequest): Promise<FulfillmentDetailsResponse> {
+    const cleanParams = {
+      user_id: Number(params.user_id),
+      search: params.search?.trim() || '',
+      status: params.status?.trim() || '',
+      product_id: Number(params.product_id) || 0,
+      page: Number(params.page) || 1,
+      page_size: Number(params.page_size) || 10
+    };
+    return ApiClient.post('/fulfillment_details', cleanParams);
   },
 };

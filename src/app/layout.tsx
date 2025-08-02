@@ -2,6 +2,7 @@ import type { Metadata } from 'next';
 import { Inter } from 'next/font/google';
 import './globals.css';
 import { NavigationProvider } from '@/components/navigation-provider';
+import { AuthProvider } from '@/components/auth-provider';
 import '@/mocks';
 
 const inter = Inter({ subsets: ['latin'] });
@@ -20,9 +21,11 @@ export default function RootLayout({
   return (
     <html lang="zh-CN">
       <body className={inter.className}>
-        <NavigationProvider>
-          {children}
-        </NavigationProvider>
+        <AuthProvider>
+          <NavigationProvider>
+            {children}
+          </NavigationProvider>
+        </AuthProvider>
       </body>
     </html>
   );

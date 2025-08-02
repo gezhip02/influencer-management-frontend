@@ -68,7 +68,7 @@ export default function RegisterPage() {
             </div>
           </div>
           <h2 className="mt-6 text-3xl font-bold text-gray-900">注册新账户</h2>
-          <p className="mt-2 text-sm text-gray-600">创建您的达人管理系统账户</p>
+          <p className="mt-2 text-sm text-gray-600">创建您的履约管理系统账户</p>
         </div>
 
         <div className="bg-white rounded-lg shadow p-8">

@@ -7,7 +7,6 @@ import {
   Users, 
   FileText, 
   Tag, 
-  Settings,
   ChevronRight,
   TrendingUp,
   Clock,
@@ -85,7 +84,7 @@ export default function HomePage() {
           <div className="flex justify-between items-center py-6">
             <div className="flex items-center">
               <BarChart3 className="h-8 w-8 text-blue-600" />
-              <h1 className="ml-3 text-2xl font-bold text-gray-900">达人管理系统</h1>
+              <h1 className="ml-3 text-2xl font-bold text-gray-900">履约管理系统</h1>
             </div>
             <nav className="flex space-x-8">
               <Link href="/influencers" className="text-gray-500 hover:text-gray-900">达人管理</Link>
@@ -106,7 +105,7 @@ export default function HomePage() {
 
         {/* Welcome Section */}
         <div className="mb-8">
-          <h2 className="text-3xl font-bold text-gray-900 mb-4">欢迎使用达人管理系统</h2>
+          <h2 className="text-3xl font-bold text-gray-900 mb-4">欢迎使用履约管理系统</h2>
           <p className="text-lg text-gray-600">
             智能管理 TikTok、抖音、快手、视频号等平台达人资源，提供精准标签匹配和合作流程跟踪
           </p>

@@ -1,44 +1,70 @@
 import { ApiClient } from './api-client';
-import { Influencer, QueryParams, PaginatedResponse } from '@/types';
+import { 
+  InfluencerSaveRequest,
+  InfluencerInfo,
+  InfluencerListRequest,
+  InfluencerListResponse,
+  InfluencerIndexResponse,
+  InfluencerTagUpdateRequest,
+  InfluencerSignedRequest
+} from '@/types';
 
 export const influencerService = {
+  // 获取达人首页数据
+  async getInfluencerIndex(): Promise<InfluencerIndexResponse> {
+    return ApiClient.post('/influencer_index', {});
+  },
+
   // 获取达人列表
-  async getInfluencers(params?: QueryParams): Promise<PaginatedResponse<Influencer>> {
-    return ApiClient.get('/influencers', params);
+  async getInfluencerList(params: InfluencerListRequest): Promise<InfluencerListResponse> {
+    return ApiClient.post('/influencer_list', params);
   },
 
-  // 获取单个达人
-  async getInfluencerById(id: string): Promise<Influencer> {
-    return ApiClient.get(`/influencers/${id}`);
+  // 获取达人详细信息
+  async getInfluencerInfo(id: number): Promise<InfluencerInfo> {
+    return ApiClient.post('/influencer_info', { id });
   },
 
-  // 创建达人
-  async createInfluencer(data: Partial<Influencer>): Promise<Influencer> {
-    return ApiClient.post('/influencers', data);
+  // 创建或更新达人
+  async saveInfluencer(data: InfluencerSaveRequest): Promise<{ id: number }> {
+    return ApiClient.post('/influencer_save', data);
   },
 
-  // 更新达人
-  async updateInfluencer(id: string, data: Partial<Influencer>): Promise<Influencer> {
-    return ApiClient.put(`/influencers/${id}`, data);
+  // 创建达人（便捷方法）
+  async createInfluencer(data: Omit<InfluencerSaveRequest, 'id'>): Promise<{ id: number }> {
+    return this.saveInfluencer({ ...data, id: 0 });
+  },
+
+  // 更新达人（便捷方法）
+  async updateInfluencer(id: number, data: Omit<InfluencerSaveRequest, 'id'>): Promise<{ id: number }> {
+    return this.saveInfluencer({ ...data, id });
   },
 
   // 删除达人
-  async deleteInfluencer(id: string): Promise<void> {
-    return ApiClient.delete(`/influencers/${id}`);
+  async deleteInfluencer(id: number): Promise<void> {
+    return ApiClient.post('/influencer_delete', { id });
   },
 
-  // 批量操作
-  async batchUpdateInfluencers(ids: string[], data: Partial<Influencer>): Promise<void> {
-    return ApiClient.post('/influencers/batch', { ids, data });
+  // 更新达人标签
+  async updateInfluencerTags(data: InfluencerTagUpdateRequest): Promise<void> {
+    return ApiClient.post('/influencer_up_tag', data);
   },
 
-  // 获取达人合同信息
-  async getInfluencerContract(id: string): Promise<any> {
-    return ApiClient.get(`/influencers/${id}/contract`);
+  // 达人签约
+  async signInfluencer(data: InfluencerSignedRequest): Promise<{ id: number }> {
+    return ApiClient.post('/influencer_signed', data);
   },
 
-  // 更新达人合同
-  async updateInfluencerContract(id: string, contractData: any): Promise<any> {
-    return ApiClient.put(`/influencers/${id}/contract`, contractData);
+  // 删除达人签约
+  async deleteInfluencerSigned(id: number): Promise<{ id: number }> {
+    return ApiClient.post('/influencer_del_signed', { id });
+  },
+
+  // 批量导入达人
+  async importInfluencers(file: File): Promise<void> {
+    const formData = new FormData();
+    formData.append('file', file);
+    
+    return ApiClient.post('/influencer_import', formData);
   },
 };

@@ -13,8 +13,17 @@ if (typeof window !== 'undefined' && process.env.NODE_ENV === 'development') {
 }
 
 // API 配置
+const getBaseURL = () => {
+  // 开发环境下使用相对路径，利用Next.js的API代理功能
+  if (process.env.NODE_ENV === 'development') {
+    return '/api';
+  }
+  // 生产环境使用完整URL
+  return process.env.NEXT_PUBLIC_API_BASE_URL || '/api';
+};
+
 const API_CONFIG = {
-  baseURL: process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:8080/api',
+  baseURL: getBaseURL(),
   timeout: 30000,
   headers: {
     'Content-Type': 'application/json',
@@ -83,6 +92,16 @@ apiClient.interceptors.response.use(
     if (error.response) {
       const { status, data } = error.response;
       
+      // 开发环境详细错误日志
+      if (process.env.NODE_ENV === 'development') {
+        console.error(`❌ API Error [${status}]:`, {
+          url: error.config?.url,
+          method: error.config?.method,
+          data: error.config?.data,
+          response: data,
+        });
+      }
+      
       switch (status) {
         case 401:
           // 未授权，清除 token 并跳转登录
@@ -112,37 +131,64 @@ apiClient.interceptors.response.use(
 );
 
 // API 响应类型
-export interface ApiResponse<T = any> {
+export interface ApiResponse<T = unknown> {
   code: number;
-  message: string;
+  msg: string;
   data: T;
-  success: boolean;
 }
 
 // 封装的请求方法
 export class ApiClient {
-  static async get<T>(url: string, params?: any): Promise<T> {
+  static async get<T>(url: string, params?: unknown): Promise<T> {
     const response = await apiClient.get<ApiResponse<T>>(url, { params });
+    if (response.data.code !== 0) {
+      throw new Error(response.data.msg);
+    }
     return response.data.data;
   }
   
-  static async post<T>(url: string, data?: any): Promise<T> {
-    const response = await apiClient.post<ApiResponse<T>>(url, data);
+  static async post<T>(url: string, data?: unknown): Promise<T> {
+    // 处理FormData
+    const config: Record<string, unknown> = {};
+    if (data instanceof FormData) {
+      config.headers = {
+        'Content-Type': 'multipart/form-data',
+      };
+    }
+    
+    // 开发环境额外日志
+    if (process.env.NODE_ENV === 'development') {
+      console.log('📤 POST请求数据:', JSON.stringify(data, null, 2));
+    }
+    
+    const response = await apiClient.post<ApiResponse<T>>(url, data, config);
+    if (response.data.code !== 0) {
+      throw new Error(response.data.msg);
+    }
     return response.data.data;
   }
   
-  static async put<T>(url: string, data?: any): Promise<T> {
+  static async put<T>(url: string, data?: unknown): Promise<T> {
     const response = await apiClient.put<ApiResponse<T>>(url, data);
+    if (response.data.code !== 0) {
+      throw new Error(response.data.msg);
+    }
     return response.data.data;
   }
   
-  static async patch<T>(url: string, data?: any): Promise<T> {
+  static async patch<T>(url: string, data?: unknown): Promise<T> {
     const response = await apiClient.patch<ApiResponse<T>>(url, data);
+    if (response.data.code !== 0) {
+      throw new Error(response.data.msg);
+    }
     return response.data.data;
   }
   
   static async delete<T>(url: string): Promise<T> {
     const response = await apiClient.delete<ApiResponse<T>>(url);
+    if (response.data.code !== 0) {
+      throw new Error(response.data.msg);
+    }
     return response.data.data;
   }
 }

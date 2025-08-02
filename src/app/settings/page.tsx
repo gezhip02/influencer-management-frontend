@@ -40,7 +40,7 @@ export default function SettingsPage() {
     try {
       await new Promise(resolve => setTimeout(resolve, 1000));
       alert('设置已保存');
-    } catch (error) {
+    } catch {
       alert('保存失败');
     } finally {
       setLoading(false);

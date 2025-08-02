@@ -1,0 +1,13 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(where claude)",
+      "Bash(claude config list)",
+      "Bash(claude config set permission-mode bypassPermissions)",
+      "Bash(claude config set --global permission-mode bypassPermissions)",
+      "Bash(echo $PROFILE)",
+      "Bash(powershell:*)"
+    ],
+    "deny": []
+  }
+}

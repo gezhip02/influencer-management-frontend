@@ -1,29 +1,26 @@
 'use client';
 
-import { useState } from 'react';
-import { ArrowLeft, ArrowRight, CheckCircle, Users, Package, Settings } from 'lucide-react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
+import { ArrowLeft, ArrowRight, CheckCircle, Users, Package, Settings, Search } from 'lucide-react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { fulfillmentService } from '@/services';
+import { fulfillmentService, influencerService, productService } from '@/services';
+import type { Influencer, Product, CooperationPlan } from '@/types';
 
 interface CreateFulfillmentFormData {
-  influencerIds: string[];
-  planId: string;
-  productId: string;
+  influencer: Influencer | null;
+  product: Product | null;
+  plan: CooperationPlan | null;
   priority: number;
-  requirements: {
-    content: string;
-    duration: number;
-    format: string;
-  };
-  notes?: string;
+  remark: string;
+  createCount: number;
 }
 
 const steps = [
   { id: 1, name: '选择达人', icon: Users },
   { id: 2, name: '选择产品', icon: Package },
-  { id: 3, name: '合作方案', icon: Settings },
-  { id: 4, name: '确认创建', icon: CheckCircle },
+  { id: 3, name: '选择方案', icon: Settings },
+  { id: 4, name: '其它设置', icon: CheckCircle },
 ];
 
 export default function CreateFulfillmentPage() {
@@ -31,17 +28,94 @@ export default function CreateFulfillmentPage() {
   const [currentStep, setCurrentStep] = useState(1);
   const [loading, setLoading] = useState(false);
   const [formData, setFormData] = useState<CreateFulfillmentFormData>({
-    influencerIds: [],
-    planId: '',
-    productId: '',
-    priority: 2,
-    requirements: {
-      content: '',
-      duration: 60,
-      format: '竖屏视频',
-    },
-    notes: '',
+    influencer: null,
+    product: null,
+    plan: null,
+    priority: 2, // 默认中等优先级
+    remark: '',
+    createCount: 1,
   });
+
+  // 搜索相关状态 - 修复类型
+  const [influencerSearch, setInfluencerSearch] = useState('');
+  const [influencerResults, setInfluencerResults] = useState<any[]>([]);
+  const [productList, setProductList] = useState<any[]>([]);
+  const [planList, setPlanList] = useState<any[]>([]);
+  const [searchLoading, setSearchLoading] = useState(false);
+
+  // 加载产品列表
+  useEffect(() => {
+    if (currentStep === 2) {
+      loadProducts();
+    }
+  }, [currentStep]);
+
+  // 加载方案列表
+  useEffect(() => {
+    if (currentStep === 3) {
+      loadPlans();
+    }
+  }, [currentStep]);
+
+  // 搜索达人 - 使用useCallback优化
+  const searchInfluencers = useCallback(async (searchTerm: string) => {
+    if (!searchTerm.trim()) {
+      setInfluencerResults([]);
+      return;
+    }
+
+    setSearchLoading(true);
+    try {
+      const response = await influencerService.getInfluencerList({
+        page: 1,
+        page_size: 10,
+        search: searchTerm,
+        platform_id: 0,
+        is_deleted: 0,
+        source: 0,
+        register_start_at: 0,
+        register_end_at: 0,
+        tag: 0,
+      });
+      setInfluencerResults(response.list || []);
+    } catch (error) {
+      console.error('搜索达人失败:', error);
+      setInfluencerResults([]);
+    } finally {
+      setSearchLoading(false);
+    }
+  }, []);
+
+  const handleInfluencerSearch = useCallback(() => {
+    searchInfluencers(influencerSearch);
+  }, [influencerSearch, searchInfluencers]);
+
+  // 加载产品列表
+  const loadProducts = async () => {
+    try {
+      const response = await productService.getProductList({ 
+        page: 1, 
+        page_size: 100,
+        search: '',
+        category: '',
+      });
+      setProductList(response.list || []);
+    } catch (error) {
+      console.error('加载产品列表失败:', error);
+      setProductList([]);
+    }
+  };
+
+  // 加载方案列表
+  const loadPlans = async () => {
+    try {
+      const response = await fulfillmentService.getFulfillmentIndex();
+      setPlanList(response.cooperation_plan_list || []);
+    } catch (error) {
+      console.error('加载方案列表失败:', error);
+      setPlanList([]);
+    }
+  };
 
   const nextStep = () => {
     if (currentStep < steps.length) {
@@ -56,25 +130,34 @@ export default function CreateFulfillmentPage() {
   };
 
   const handleSubmit = async () => {
+    if (!formData.influencer || !formData.product || !formData.plan) {
+      alert('请完成所有必填项');
+      return;
+    }
+
+    setLoading(true);
     try {
-      setLoading(true);
+      const promises = [];
       
-      // 为每个选中的达人创建履约单
-      const promises = formData.influencerIds.map(influencerId =>
-        fulfillmentService.createFulfillmentRecord({
-          influencerId,
-          planId: formData.planId,
+      // 根据创建个数批量创建履约单
+      for (let i = 1; i <= formData.createCount; i++) {
+        const promise = fulfillmentService.saveFulfillment({
+          influencer_id: parseInt(formData.influencer.id.toString()),
+          cooperation_plan_id: parseInt(formData.plan.id.toString()),
           priority: formData.priority,
-          requirements: formData.requirements,
-        })
-      );
+          remark: formData.remark + (formData.createCount > 1 ? ` (${i}/${formData.createCount})` : ''),
+          product_id: parseInt(formData.product.id.toString()),
+        });
+        promises.push(promise);
+      }
 
       await Promise.all(promises);
       
       // 创建成功后跳转到履约列表
       router.push('/fulfillment');
     } catch (error) {
-      console.error('Failed to create fulfillment records:', error);
+      console.error('创建履约单失败:', error);
+      alert('创建履约单失败，请重试');
     } finally {
       setLoading(false);
     }
@@ -83,17 +166,20 @@ export default function CreateFulfillmentPage() {
   const canGoNext = () => {
     switch (currentStep) {
       case 1:
-        return formData.influencerIds.length > 0;
+        return formData.influencer !== null;
       case 2:
-        return formData.productId !== '';
+        return formData.product !== null;
       case 3:
-        return formData.requirements.content !== '';
-      default:
+        return formData.plan !== null;
+      case 4:
         return true;
+      default:
+        return false;
     }
   };
 
-  const StepIndicator = () => (
+  // 使用 useMemo 稳定组件，防止重新创建导致焦点丢失
+  const StepIndicator = useMemo(() => (
     <div className="mb-8">
       <nav className="flex items-center justify-center">
         <ol className="flex items-center space-x-6">
@@ -134,260 +220,329 @@ export default function CreateFulfillmentPage() {
         </ol>
       </nav>
     </div>
-  );
+  ), [currentStep]);
 
-  const SelectInfluencers = () => (
+  const SelectInfluencer = useMemo(() => (
     <div className="bg-white rounded-lg shadow p-6">
-      <h3 className="text-lg font-medium text-gray-900 mb-4">选择合作达人</h3>
+      <h3 className="text-lg font-medium text-gray-900 mb-4">选择达人</h3>
       
-      {/* Mock influencer selection */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-        {[
-          { id: '1', name: '美妆达人小雅CC2', platform: 'TikTok', followers: '85万', category: '美妆护肤' },
-          { id: '2', name: '科技评测师张三', platform: '抖音', followers: '65万', category: '科技数码' },
-          { id: '3', name: '健身达人Lisa', platform: 'TikTok', followers: '42万', category: '健身运动' },
-          { id: '4', name: '美食博主小王', platform: '抖音', followers: '38万', category: '美食探店' },
-        ].map((influencer) => (
-          <div
-            key={influencer.id}
-            className={`border-2 rounded-lg p-4 cursor-pointer transition-colors ${
-              formData.influencerIds.includes(influencer.id)
-                ? 'border-blue-500 bg-blue-50'
-                : 'border-gray-200 hover:border-gray-300'
-            }`}
-            onClick={() => {
-              const isSelected = formData.influencerIds.includes(influencer.id);
-              setFormData(prev => ({
-                ...prev,
-                influencerIds: isSelected
-                  ? prev.influencerIds.filter(id => id !== influencer.id)
-                  : [...prev.influencerIds, influencer.id]
-              }));
-            }}
-          >
-            <div className="flex items-center">
-              <div className="flex-shrink-0">
-                <div className="w-12 h-12 bg-gray-300 rounded-full flex items-center justify-center">
-                  <Users className="h-6 w-6 text-gray-600" />
-                </div>
+      {/* 已选择的达人 */}
+      {formData.influencer && (
+        <div className="mb-6 p-4 bg-green-50 border border-green-200 rounded-lg">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center space-x-3">
+              <div className="w-12 h-12 bg-green-100 rounded-full flex items-center justify-center">
+                <Users className="h-6 w-6 text-green-600" />
               </div>
-              <div className="ml-4 flex-1">
-                <h4 className="text-sm font-medium text-gray-900">{influencer.name}</h4>
-                <p className="text-sm text-gray-500">{influencer.platform} · {influencer.followers}粉丝</p>
-                <p className="text-xs text-gray-400">{influencer.category}</p>
+              <div>
+                <h4 className="font-medium text-gray-900">{formData.influencer.name}</h4>
+                <p className="text-sm text-gray-500">
+                  粉丝: {(formData.influencer as any).followers_count?.toLocaleString() || 0}
+                </p>
               </div>
             </div>
+            <CheckCircle className="h-6 w-6 text-green-600" />
           </div>
-        ))}
-      </div>
-      
-      <div className="mt-4 p-4 bg-blue-50 rounded-lg">
-        <p className="text-sm text-blue-700">
-          已选择 <span className="font-medium">{formData.influencerIds.length}</span> 位达人
-          {formData.influencerIds.length > 0 && ' · 将为每位达人创建独立的履约单'}
-        </p>
-      </div>
-    </div>
-  );
-
-  const SelectProduct = () => (
-    <div className="bg-white rounded-lg shadow p-6">
-      <h3 className="text-lg font-medium text-gray-900 mb-4">选择合作产品</h3>
-      
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-        {[
-          { id: 'plan_001', name: '兰蔻新品推广计划', budget: '5万', description: 'Q1兰蔻新品口红系列推广' },
-          { id: 'plan_002', name: '小米手机评测计划', budget: '8万', description: '小米14系列手机评测推广' },
-          { id: 'plan_003', name: '健身装备推广', budget: '3万', description: '春季健身装备推广活动' },
-        ].map((plan) => (
-          <div
-            key={plan.id}
-            className={`border-2 rounded-lg p-4 cursor-pointer transition-colors ${
-              formData.planId === plan.id
-                ? 'border-blue-500 bg-blue-50'
-                : 'border-gray-200 hover:border-gray-300'
-            }`}
-            onClick={() => setFormData(prev => ({ ...prev, planId: plan.id, productId: plan.id }))}
-          >
-            <div className="flex items-start">
-              <Package className="h-8 w-8 text-gray-400 mt-1" />
-              <div className="ml-3 flex-1">
-                <h4 className="text-sm font-medium text-gray-900">{plan.name}</h4>
-                <p className="text-sm text-gray-500 mt-1">{plan.description}</p>
-                <div className="flex items-center justify-between mt-2">
-                  <span className="text-xs text-gray-400">预算</span>
-                  <span className="text-sm font-medium text-green-600">{plan.budget}</span>
-                </div>
-              </div>
-            </div>
-          </div>
-        ))}
-      </div>
-    </div>
-  );
-
-  const SetupRequirements = () => (
-    <div className="bg-white rounded-lg shadow p-6">
-      <h3 className="text-lg font-medium text-gray-900 mb-4">设置合作要求</h3>
-      
-      <div className="space-y-6">
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-2">
-            内容要求 *
-          </label>
-          <textarea
-            rows={4}
-            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
-            placeholder="请详细描述内容创作要求..."
-            value={formData.requirements.content}
-            onChange={(e) => setFormData(prev => ({
-              ...prev,
-              requirements: { ...prev.requirements, content: e.target.value }
-            }))}
-          />
         </div>
-
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              视频时长（秒）
-            </label>
+      )}
+      
+      {/* 搜索框 */}
+      <div className="mb-4">
+        <div className="flex items-center space-x-3">
+          <div className="flex-1 relative">
+            <Search className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
             <input
-              type="number"
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
-              value={formData.requirements.duration}
-              onChange={(e) => setFormData(prev => ({
-                ...prev,
-                requirements: { ...prev.requirements, duration: parseInt(e.target.value) }
-              }))}
+              type="text"
+              placeholder="输入达人名字进行搜索..."
+              className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+              value={influencerSearch}
+              onChange={(e) => setInfluencerSearch(e.target.value)}
+              onKeyPress={(e) => e.key === 'Enter' && handleInfluencerSearch()}
             />
           </div>
-          
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              视频格式
-            </label>
-            <select
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
-              value={formData.requirements.format}
-              onChange={(e) => setFormData(prev => ({
-                ...prev,
-                requirements: { ...prev.requirements, format: e.target.value }
-              }))}
+          <button
+            onClick={handleInfluencerSearch}
+            disabled={searchLoading || !influencerSearch.trim()}
+            className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            {searchLoading ? '搜索中...' : '搜索'}
+          </button>
+        </div>
+      </div>
+      
+      {/* 搜索结果 */}
+      {searchLoading ? (
+        <div className="text-center py-8">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto"></div>
+          <p className="mt-2 text-gray-500">搜索中...</p>
+        </div>
+      ) : influencerResults.length > 0 ? (
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          {influencerResults.map((influencer) => (
+            <div
+              key={influencer.id}
+              className={`border-2 rounded-lg p-4 cursor-pointer transition-colors ${
+                formData.influencer?.id === influencer.id
+                  ? 'border-blue-500 bg-blue-50'
+                  : 'border-gray-200 hover:border-gray-300'
+              }`}
+              onClick={() => setFormData(prev => ({ ...prev, influencer }))}
             >
-              <option value="竖屏视频">竖屏视频</option>
-              <option value="横屏视频">横屏视频</option>
-              <option value="方形视频">方形视频</option>
-            </select>
+              <div className="flex items-center">
+                <div className="flex-shrink-0">
+                  <div className="w-12 h-12 bg-gray-300 rounded-full flex items-center justify-center">
+                    <Users className="h-6 w-6 text-gray-600" />
+                  </div>
+                </div>
+                <div className="ml-4 flex-1">
+                  <h4 className="text-sm font-medium text-gray-900">{influencer.name}</h4>
+                  <p className="text-sm text-gray-500">
+                    粉丝: {influencer.followers_count?.toLocaleString() || 0}
+                  </p>
+                  {influencer.platform && (
+                    <p className="text-xs text-gray-400">{influencer.platform}</p>
+                  )}
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+      ) : influencerSearch ? (
+        <div className="text-center py-8 text-gray-500">
+          未找到匹配的达人
+        </div>
+      ) : (
+        <div className="text-center py-8 text-gray-500">
+          请输入达人名字进行搜索
+        </div>
+      )}
+    </div>
+  ), [formData.influencer, influencerSearch, influencerResults, searchLoading, handleInfluencerSearch]);
+
+  const SelectProduct = useMemo(() => (
+    <div className="bg-white rounded-lg shadow p-6">
+      <h3 className="text-lg font-medium text-gray-900 mb-4">选择产品</h3>
+      
+      {/* 已选择的产品 */}
+      {formData.product && (
+        <div className="mb-6 p-4 bg-green-50 border border-green-200 rounded-lg">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center space-x-3">
+              <div className="w-12 h-12 bg-green-100 rounded-full flex items-center justify-center">
+                <Package className="h-6 w-6 text-green-600" />
+              </div>
+              <div>
+                <h4 className="font-medium text-gray-900">{formData.product.name}</h4>
+                <p className="text-sm text-gray-500">
+                  价格: ¥{formData.product.price || 0}
+                </p>
+              </div>
+            </div>
+            <CheckCircle className="h-6 w-6 text-green-600" />
           </div>
         </div>
+      )}
+      
+      {/* 产品列表 */}
+      {productList.length > 0 ? (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          {productList.map((product) => (
+            <div
+              key={product.id}
+              className={`border-2 rounded-lg p-4 cursor-pointer transition-colors ${
+                formData.product?.id === product.id
+                  ? 'border-blue-500 bg-blue-50'
+                  : 'border-gray-200 hover:border-gray-300'
+              }`}
+              onClick={() => setFormData(prev => ({ ...prev, product }))}
+            >
+              <div className="flex items-start">
+                <Package className="h-8 w-8 text-gray-400 mt-1" />
+                <div className="ml-3 flex-1">
+                  <h4 className="text-sm font-medium text-gray-900">{product.name}</h4>
+                  <p className="text-sm text-gray-500 mt-1">{product.description || '暂无描述'}</p>
+                  <div className="flex items-center justify-between mt-2">
+                    <span className="text-xs text-gray-400">价格</span>
+                    <span className="text-sm font-medium text-green-600">¥{product.price || 0}</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+      ) : (
+        <div className="text-center py-8 text-gray-500">
+          暂无可用产品
+        </div>
+      )}
+    </div>
+  ), [formData.product, productList]);
 
+  const SelectPlan = useMemo(() => (
+    <div className="bg-white rounded-lg shadow p-6">
+      <h3 className="text-lg font-medium text-gray-900 mb-4">选择合作方案</h3>
+      
+      {/* 已选择的方案 */}
+      {formData.plan && (
+        <div className="mb-6 p-4 bg-green-50 border border-green-200 rounded-lg">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center space-x-3">
+              <div className="w-12 h-12 bg-green-100 rounded-full flex items-center justify-center">
+                <Settings className="h-6 w-6 text-green-600" />
+              </div>
+              <div>
+                <h4 className="font-medium text-gray-900">{(formData.plan as any).name || '未知方案'}</h4>
+                <p className="text-sm text-gray-500">
+                  {formData.plan.description || '无描述'}
+                </p>
+              </div>
+            </div>
+            <CheckCircle className="h-6 w-6 text-green-600" />
+          </div>
+        </div>
+      )}
+      
+      {/* 方案列表 */}
+      {planList.length > 0 ? (
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          {planList.map((plan) => (
+            <div
+              key={plan.id}
+              className={`border-2 rounded-lg p-4 cursor-pointer transition-colors ${
+                formData.plan?.id === plan.id
+                  ? 'border-blue-500 bg-blue-50'
+                  : 'border-gray-200 hover:border-gray-300'
+              }`}
+              onClick={() => setFormData(prev => ({ ...prev, plan }))}
+            >
+              <div className="flex items-start">
+                <Settings className="h-8 w-8 text-gray-400 mt-1" />
+                <div className="ml-3 flex-1">
+                  <h4 className="text-sm font-medium text-gray-900">{plan.name}</h4>
+                  <p className="text-sm text-gray-500 mt-1">{plan.description || '无描述'}</p>
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+      ) : (
+        <div className="text-center py-8 text-gray-500">
+          暂无可用合作方案
+        </div>
+      )}
+    </div>
+  ), [formData.plan, planList]);
+
+  const OtherSettings = useMemo(() => (
+    <div className="bg-white rounded-lg shadow p-6">
+      <h3 className="text-lg font-medium text-gray-900 mb-4">其它设置</h3>
+      
+      <div className="space-y-6">
+        {/* 优先级设置 */}
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-2">
-            优先级
+          <label className="block text-sm font-medium text-gray-700 mb-3">
+            履约单优先级（默认中等）
           </label>
-          <div className="flex space-x-4">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             {[
-              { value: 1, label: '高优先级', color: 'red' },
-              { value: 2, label: '中优先级', color: 'yellow' },
-              { value: 3, label: '低优先级', color: 'green' },
+              { value: 1, label: '高优先级', color: 'red', desc: '紧急处理' },
+              { value: 2, label: '中优先级', color: 'yellow', desc: '正常处理' },
+              { value: 3, label: '低优先级', color: 'green', desc: '可延后处理' },
             ].map((priority) => (
-              <label key={priority.value} className="flex items-center">
-                <input
-                  type="radio"
-                  name="priority"
-                  value={priority.value}
-                  checked={formData.priority === priority.value}
-                  onChange={(e) => setFormData(prev => ({
-                    ...prev,
-                    priority: parseInt(e.target.value)
-                  }))}
-                  className="mr-2"
-                />
-                <span className="text-sm text-gray-700">{priority.label}</span>
-              </label>
+              <div
+                key={priority.value}
+                className={`border-2 rounded-lg p-3 cursor-pointer transition-colors ${
+                  formData.priority === priority.value
+                    ? 'border-blue-500 bg-blue-50'
+                    : 'border-gray-200 hover:border-gray-300'
+                }`}
+                onClick={() => setFormData(prev => ({ ...prev, priority: priority.value }))}
+              >
+                <div className="flex items-center space-x-2">
+                  <input
+                    type="radio"
+                    name="priority"
+                    value={priority.value}
+                    checked={formData.priority === priority.value}
+                    readOnly
+                    className="text-blue-600"
+                  />
+                  <div>
+                    <div className="font-medium text-gray-900">{priority.label}</div>
+                    <div className="text-sm text-gray-500">{priority.desc}</div>
+                  </div>
+                </div>
+              </div>
             ))}
           </div>
         </div>
 
+        {/* 备注设置 */}
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-2">
-            备注信息
+            备注（选填）
           </label>
           <textarea
             rows={3}
             className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
-            placeholder="其他备注信息（可选）"
-            value={formData.notes}
-            onChange={(e) => setFormData(prev => ({ ...prev, notes: e.target.value }))}
+            placeholder="请输入履约单备注信息..."
+            value={formData.remark}
+            onChange={(e) => setFormData(prev => ({ ...prev, remark: e.target.value }))}
           />
         </div>
+
+        {/* 创建个数设置 */}
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-2">
+            创建履约单个数（1-20个）
+          </label>
+          <input
+            type="number"
+            min="1"
+            max="20"
+            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
+            value={formData.createCount}
+            onChange={(e) => {
+              const value = e.target.value;
+              if (value === '') {
+                setFormData(prev => ({ ...prev, createCount: 1 }));
+              } else {
+                const numValue = parseInt(value);
+                if (!isNaN(numValue)) {
+                  setFormData(prev => ({ ...prev, createCount: numValue }));
+                }
+              }
+            }}
+            onBlur={(e) => {
+              const count = Math.max(1, Math.min(20, formData.createCount));
+              setFormData(prev => ({ ...prev, createCount: count }));
+            }}
+          />
+          <p className="mt-1 text-sm text-gray-500">
+            将根据当前选择的达人、产品和方案创建 {formData.createCount} 个履约单
+          </p>
+        </div>
       </div>
     </div>
-  );
-
-  const ConfirmCreate = () => (
-    <div className="bg-white rounded-lg shadow p-6">
-      <h3 className="text-lg font-medium text-gray-900 mb-4">确认创建履约单</h3>
-      
-      <div className="space-y-6">
-        <div>
-          <h4 className="text-sm font-medium text-gray-700 mb-2">选中的达人</h4>
-          <div className="bg-gray-50 p-3 rounded-lg">
-            <p className="text-sm text-gray-600">
-              将为 <span className="font-medium text-blue-600">{formData.influencerIds.length}</span> 位达人创建履约单
-            </p>
-          </div>
-        </div>
-
-        <div>
-          <h4 className="text-sm font-medium text-gray-700 mb-2">合作方案</h4>
-          <div className="bg-gray-50 p-3 rounded-lg">
-            <p className="text-sm text-gray-600">方案ID: {formData.planId}</p>
-          </div>
-        </div>
-
-        <div>
-          <h4 className="text-sm font-medium text-gray-700 mb-2">内容要求</h4>
-          <div className="bg-gray-50 p-3 rounded-lg">
-            <p className="text-sm text-gray-600">{formData.requirements.content}</p>
-            <div className="flex items-center space-x-4 mt-2 text-xs text-gray-500">
-              <span>时长: {formData.requirements.duration}秒</span>
-              <span>格式: {formData.requirements.format}</span>
-              <span>优先级: {formData.priority === 1 ? '高' : formData.priority === 2 ? '中' : '低'}</span>
-            </div>
-          </div>
-        </div>
-
-        {formData.notes && (
-          <div>
-            <h4 className="text-sm font-medium text-gray-700 mb-2">备注</h4>
-            <div className="bg-gray-50 p-3 rounded-lg">
-              <p className="text-sm text-gray-600">{formData.notes}</p>
-            </div>
-          </div>
-        )}
-      </div>
-    </div>
-  );
+  ), [formData.priority, formData.remark, formData.createCount]);
 
   const renderStep = () => {
     switch (currentStep) {
       case 1:
-        return <SelectInfluencers />;
+        return SelectInfluencer;
       case 2:
-        return <SelectProduct />;
+        return SelectProduct;
       case 3:
-        return <SetupRequirements />;
+        return SelectPlan;
       case 4:
-        return <ConfirmCreate />;
+        return OtherSettings;
       default:
         return null;
     }
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 py-8">
+    <div className="min-h-screen bg-gray-50 py-8 pb-12"> {/* 添加底部padding */}
       <div className="max-w-4xl mx-auto px-4">
         {/* Header */}
         <div className="mb-8">
@@ -404,52 +559,54 @@ export default function CreateFulfillmentPage() {
         </div>
 
         {/* Step Indicator */}
-        <StepIndicator />
+        {StepIndicator}
 
         {/* Step Content */}
         <div className="mb-8">
           {renderStep()}
         </div>
 
-        {/* Navigation */}
-        <div className="flex justify-between">
-          <button
-            onClick={prevStep}
-            disabled={currentStep === 1}
-            className="flex items-center px-4 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
-          >
-            <ArrowLeft className="h-4 w-4 mr-2" />
-            上一步
-          </button>
+        {/* 底部按钮 */}
+        <div className="bg-white border-t border-gray-200 px-6 py-4 sticky bottom-0 z-10 shadow-lg">
+          <div className="flex justify-between items-center">
+            <button
+              onClick={prevStep}
+              disabled={currentStep === 1}
+              className="flex items-center px-4 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              <ArrowLeft className="h-4 w-4 mr-2" />
+              上一步
+            </button>
 
-          {currentStep < steps.length ? (
-            <button
-              onClick={nextStep}
-              disabled={!canGoNext()}
-              className="flex items-center px-4 py-2 bg-blue-600 text-white rounded-md text-sm font-medium hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              下一步
-              <ArrowRight className="h-4 w-4 ml-2" />
-            </button>
-          ) : (
-            <button
-              onClick={handleSubmit}
-              disabled={loading}
-              className="flex items-center px-6 py-2 bg-green-600 text-white rounded-md text-sm font-medium hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              {loading ? (
-                <>
-                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
-                  创建中...
-                </>
-              ) : (
-                <>
-                  <CheckCircle className="h-4 w-4 mr-2" />
-                  创建履约单
-                </>
-              )}
-            </button>
-          )}
+            {currentStep < steps.length ? (
+              <button
+                onClick={nextStep}
+                disabled={!canGoNext()}
+                className="flex items-center px-6 py-3 bg-blue-600 text-white rounded-md text-sm font-medium hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed shadow-md"
+              >
+                下一步
+                <ArrowRight className="h-4 w-4 ml-2" />
+              </button>
+            ) : (
+              <button
+                onClick={handleSubmit}
+                disabled={loading}
+                className="flex items-center px-6 py-3 bg-green-600 text-white rounded-md text-sm font-medium hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed shadow-md"
+              >
+                {loading ? (
+                  <>
+                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                    创建中...
+                  </>
+                ) : (
+                  <>
+                    <CheckCircle className="h-4 w-4 mr-2" />
+                    创建履约单
+                  </>
+                )}
+              </button>
+            )}
+          </div>
         </div>
       </div>
     </div>

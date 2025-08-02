@@ -38,12 +38,15 @@ async function startDev() {
     console.log(`\u001b[36m🚀 启动开发服务器...\u001b[0m`);
     console.log(`\u001b[36m📱 访问地址: http://localhost:${port}\u001b[0m`);
     
-    // 检查并设置环境变量
-    if (!process.env.NEXT_PUBLIC_USE_MOCK) {
-      process.env.NEXT_PUBLIC_USE_MOCK = 'true';
+    // 显示 Mock 数据模式状态
+    const useMock = process.env.NEXT_PUBLIC_USE_MOCK || 'false';
+    const apiBaseUrl = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:8080';
+    
+    if (useMock === 'true') {
       console.log(`\u001b[33m📦 已启用 Mock 数据模式\u001b[0m`);
     } else {
-      console.log(`\u001b[33m📦 Mock 数据模式: ${process.env.NEXT_PUBLIC_USE_MOCK}\u001b[0m`);
+      console.log(`\u001b[32m🌐 使用真实 API 接口: ${apiBaseUrl}\u001b[0m`);
+      console.log(`\u001b[36m📡 完整API地址: ${apiBaseUrl}/api\u001b[0m`);
     }
     console.log('');
     
@@ -56,8 +59,8 @@ async function startDev() {
         shell: true,
         cwd: process.cwd(),
         env: {
-          ...process.env,
-          NEXT_PUBLIC_USE_MOCK: 'true'  // 默认启用 Mock 数据
+          ...process.env
+          // 使用 .env.local 中的环境变量配置，不强制覆盖
         }
       }
     );

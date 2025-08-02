@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { BarChart3, TrendingUp, Users, Clock, AlertTriangle, CheckCircle } from 'lucide-react';
+import { BarChart3, TrendingUp, Clock, AlertTriangle, CheckCircle } from 'lucide-react';
 import { dashboardService } from '@/services';
 
 interface DashboardData {
@@ -47,7 +47,7 @@ export default function FulfillmentDashboardPage() {
     try {
       setLoading(true);
       const dashboardData = await dashboardService.getEnhancedStats();
-      setData(dashboardData);
+      setData(dashboardData as DashboardData);
     } catch (error) {
       console.error('Failed to load dashboard data:', error);
     } finally {

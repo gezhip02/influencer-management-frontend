@@ -21,8 +21,8 @@ if (typeof window !== 'undefined') {
   console.log('  - NODE_ENV:', process.env.NODE_ENV);
   console.log('  - API_BASE_URL:', process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:8080/api');
   
-  // 开发环境下默认启用Mock，除非明确设置为false
-  const shouldUseMock = process.env.NEXT_PUBLIC_USE_MOCK !== 'false' && process.env.NODE_ENV === 'development';
+  // 只有明确设置为 'true' 时才启用 Mock
+  const shouldUseMock = process.env.NEXT_PUBLIC_USE_MOCK === 'true' && process.env.NODE_ENV === 'development';
   
   console.log('🔍 是否使用Mock:', shouldUseMock);
   
@@ -70,8 +70,8 @@ if (typeof window !== 'undefined') {
         }
         
         // 添加到全局对象，方便调试
-        (window as any).mswWorker = worker;
-        (window as any).mswReady = true;
+        (window as unknown as Record<string, unknown>).mswWorker = worker;
+        (window as unknown as Record<string, unknown>).mswReady = true;
         
       } catch (error) {
         console.error('❌ Mock Service Worker 启动失败:', error);
