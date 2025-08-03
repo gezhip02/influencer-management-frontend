@@ -6,6 +6,8 @@
     "dev": "next dev",
     "dev:custom": "node scripts/start-dev.js",
     "build": "next build",
+    "build:package": "npm run build && Compress-Archive -Path .next\\standalone, .next\\static, public, package.json, package-lock.json, next.config.ts -DestinationPath deploy.zip",
+
     "start": "next start",
     "lint": "next lint",
     "type-check": "tsc --noEmit",

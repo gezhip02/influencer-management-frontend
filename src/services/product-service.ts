@@ -2,9 +2,7 @@ import { ApiClient } from './api-client';
 import { 
   ProductListRequest,
   ProductListResponse,
-  ProductInfo,
   ProductEditRequest,
-  ProductDeleteRequest,
   ProductOperationResponse
 } from '@/types';
 

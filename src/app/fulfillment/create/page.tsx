@@ -5,7 +5,13 @@ import { ArrowLeft, ArrowRight, CheckCircle, Users, Package, Settings, Search } 
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { fulfillmentService, influencerService, productService } from '@/services';
-import type { Influencer, Product, CooperationPlan } from '@/types';
+import type { 
+  Influencer, 
+  Product, 
+  CooperationPlan,
+  InfluencerListItem,
+  ProductInfo
+} from '@/types';
 
 interface CreateFulfillmentFormData {
   influencer: Influencer | null;
@@ -38,9 +44,9 @@ export default function CreateFulfillmentPage() {
 
   // 搜索相关状态 - 修复类型
   const [influencerSearch, setInfluencerSearch] = useState('');
-  const [influencerResults, setInfluencerResults] = useState<any[]>([]);
-  const [productList, setProductList] = useState<any[]>([]);
-  const [planList, setPlanList] = useState<any[]>([]);
+  const [influencerResults, setInfluencerResults] = useState<InfluencerListItem[]>([]);
+  const [productList, setProductList] = useState<ProductInfo[]>([]);
+  const [planList, setPlanList] = useState<CooperationPlan[]>([]);
   const [searchLoading, setSearchLoading] = useState(false);
 
   // 加载产品列表
@@ -75,7 +81,7 @@ export default function CreateFulfillmentPage() {
         source: 0,
         register_start_at: 0,
         register_end_at: 0,
-        tag: 0,
+        tag: '',
       });
       setInfluencerResults(response.list || []);
     } catch (error) {
@@ -282,11 +288,19 @@ export default function CreateFulfillmentPage() {
             <div
               key={influencer.id}
               className={`border-2 rounded-lg p-4 cursor-pointer transition-colors ${
-                formData.influencer?.id === influencer.id
+                formData.influencer?.id === influencer.id.toString()
                   ? 'border-blue-500 bg-blue-50'
                   : 'border-gray-200 hover:border-gray-300'
               }`}
-              onClick={() => setFormData(prev => ({ ...prev, influencer }))}
+              onClick={() => setFormData(prev => ({ 
+                ...prev, 
+                influencer: {
+                  id: influencer.id.toString(),
+                  creatorId: influencer.id.toString(),
+                  name: influencer.display_name,
+                  platform: 'tiktok', // 默认平台
+                } as Influencer
+              }))}
             >
               <div className="flex items-center">
                 <div className="flex-shrink-0">
@@ -295,13 +309,11 @@ export default function CreateFulfillmentPage() {
                   </div>
                 </div>
                 <div className="ml-4 flex-1">
-                  <h4 className="text-sm font-medium text-gray-900">{influencer.name}</h4>
+                  <h4 className="text-sm font-medium text-gray-900">{influencer.display_name}</h4>
                   <p className="text-sm text-gray-500">
-                    粉丝: {influencer.followers_count?.toLocaleString() || 0}
+                    ID: {influencer.id}
                   </p>
-                  {influencer.platform && (
-                    <p className="text-xs text-gray-400">{influencer.platform}</p>
-                  )}
+                  <p className="text-xs text-gray-400">来源: {influencer.source}</p>
                 </div>
               </div>
             </div>
@@ -350,11 +362,21 @@ export default function CreateFulfillmentPage() {
             <div
               key={product.id}
               className={`border-2 rounded-lg p-4 cursor-pointer transition-colors ${
-                formData.product?.id === product.id
+                formData.product?.id === product.id.toString()
                   ? 'border-blue-500 bg-blue-50'
                   : 'border-gray-200 hover:border-gray-300'
               }`}
-              onClick={() => setFormData(prev => ({ ...prev, product }))}
+              onClick={() => setFormData(prev => ({ 
+                ...prev, 
+                product: {
+                  id: product.id.toString(),
+                  name: product.name,
+                  description: product.description,
+                  category: product.category,
+                  price: product.price,
+                  is_deleted: 0
+                } as Product
+              }))}
             >
               <div className="flex items-start">
                 <Package className="h-8 w-8 text-gray-400 mt-1" />
@@ -418,7 +440,7 @@ export default function CreateFulfillmentPage() {
               <div className="flex items-start">
                 <Settings className="h-8 w-8 text-gray-400 mt-1" />
                 <div className="ml-3 flex-1">
-                  <h4 className="text-sm font-medium text-gray-900">{plan.name}</h4>
+                  <h4 className="text-sm font-medium text-gray-900">{plan.title}</h4>
                   <p className="text-sm text-gray-500 mt-1">{plan.description || '无描述'}</p>
                 </div>
               </div>

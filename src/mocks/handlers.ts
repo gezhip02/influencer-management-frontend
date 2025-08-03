@@ -1,19 +1,8 @@
 import { http, HttpResponse } from 'msw';
 import { 
   mockInfluencers, 
-  mockFulfillmentRecords, 
   mockTags, 
-  mockDashboardStats,
-  mockEnhancedStats,
-  mockAdditionalStats,
-  mockRoiRanking,
-  mockTimeoutStats,
-  mockTaskProgressStats,
-  mockTopTimeouts,
-  mockUsers,
-  mockBdPerformances,
-  mockBdRanking,
-  mockImportHistory
+  mockDashboardStats
 } from './data';
 
 // Mock product data

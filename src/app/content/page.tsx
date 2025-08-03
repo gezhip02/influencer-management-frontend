@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { FileText, Upload, Search, Filter, Eye, Edit, Play, ShoppingCart } from 'lucide-react';
+import { FileText, Upload, Search, Eye, Edit, Play, ShoppingCart } from 'lucide-react';
 import { contentService } from '@/services';
 import type { 
   ContentIndexResponse,
@@ -210,7 +210,7 @@ export default function ContentPage() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 p-6">
+    <div className="min-h-screen bg-gray-50 p-6 pb-12">
       <div className="max-w-7xl mx-auto">
         {/* Header */}
         <div className="mb-8">

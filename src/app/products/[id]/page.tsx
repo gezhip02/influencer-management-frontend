@@ -216,18 +216,10 @@ export default function ProductDetailPage() {
               <div className="space-y-4">
                 <h3 className="text-lg font-medium text-gray-900">营销信息</h3>
                 <div className="space-y-3">
-                  {product.budget > 0 && (
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700">预算</label>
-                      <p className="text-sm text-gray-900">¥{product.budget.toLocaleString()}</p>
-                    </div>
-                  )}
-                  {product.target_audience && (
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700">目标受众</label>
-                      <p className="text-sm text-gray-900">{product.target_audience}</p>
-                    </div>
-                  )}
+                  {/* 预算信息暂时移除，因为ProductInfo接口中没有budget字段 */}
+                  <div>
+                    <p className="text-sm text-gray-500">营销信息需要后端接口支持</p>
+                  </div>
                 </div>
               </div>
 
@@ -235,37 +227,14 @@ export default function ProductDetailPage() {
               <div className="space-y-4">
                 <h3 className="text-lg font-medium text-gray-900">时间信息</h3>
                 <div className="space-y-3">
-                  {product.start_date > 0 && (
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700">开始时间</label>
-                      <p className="text-sm text-gray-900">
-                        {new Date(product.start_date).toLocaleDateString()}
-                      </p>
-                    </div>
-                  )}
-                  {product.end_date > 0 && (
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700">结束时间</label>
-                      <p className="text-sm text-gray-900">
-                        {new Date(product.end_date).toLocaleDateString()}
-                      </p>
-                    </div>
-                  )}
+                  <div>
+                    <p className="text-sm text-gray-500">时间信息需要后端接口支持</p>
+                  </div>
                 </div>
               </div>
             </div>
 
-            {/* 内容要求 */}
-            {product.content_requirements && (
-              <div className="mt-6 pt-6 border-t border-gray-200">
-                <h3 className="text-lg font-medium text-gray-900 mb-3">内容要求</h3>
-                <div className="bg-gray-50 rounded-lg p-4">
-                  <p className="text-sm text-gray-700 whitespace-pre-wrap">
-                    {product.content_requirements}
-                  </p>
-                </div>
-              </div>
-            )}
+            {/* 内容要求 - 暂时移除，字段不存在于ProductInfo接口 */}
           </div>
         </div>
       </div>

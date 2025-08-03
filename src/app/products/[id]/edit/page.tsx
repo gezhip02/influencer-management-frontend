@@ -5,7 +5,7 @@ import { ArrowLeft, Save } from 'lucide-react';
 import Link from 'next/link';
 import { useParams, useRouter } from 'next/navigation';
 import { productService } from '@/services';
-import type { ProductEditRequest, ProductInfo } from '@/types';
+import type { ProductEditRequest } from '@/types';
 
 export default function EditProductPage() {
   const params = useParams();

@@ -1,11 +1,11 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { ArrowLeft, Save, Users } from 'lucide-react';
+import { ArrowLeft, Save } from 'lucide-react';
 import Link from 'next/link';
 import { useParams, useRouter } from 'next/navigation';
 import { influencerService } from '@/services';
-import type { InfluencerSaveRequest, InfluencerInfo } from '@/types';
+import type { InfluencerSaveRequest } from '@/types';
 
 export default function EditInfluencerPage() {
   const params = useParams();

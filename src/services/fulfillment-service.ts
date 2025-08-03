@@ -10,7 +10,6 @@ import {
   FulfillmentDetailsRequest,
   FulfillmentDetailsResponse,
   FulfillmentListItem,
-  FulfillmentDeleteRequest,
   FulfillmentOperationResponse
 } from '@/types';
 

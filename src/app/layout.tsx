@@ -8,7 +8,7 @@ import '@/mocks';
 const inter = Inter({ subsets: ['latin'] });
 
 export const metadata: Metadata = {
-  title: '达人打标管理系统 - Influencer Management System',
+  title: '履约管理系统 - Fulfillment Management System',
   description: '智能管理 TikTok、抖音、快手、视频号等平台达人资源，提供精准标签匹配和合作流程跟踪',
   keywords: ['influencer', 'tiktok', 'management', 'marking', 'cooperation'],
 };

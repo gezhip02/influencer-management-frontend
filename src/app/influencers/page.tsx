@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Users, Plus, Search, Filter, Tag, Edit, Trash2, Upload } from 'lucide-react';
 import Link from 'next/link';
 import { influencerService } from '@/services';
@@ -30,7 +30,7 @@ export default function InfluencersPage() {
     source: 0,
     register_start_at: 0,
     register_end_at: 0,
-    tag: 0,
+    tag: '',
   });
 
   const [searchTerm, setSearchTerm] = useState('');
@@ -57,8 +57,11 @@ export default function InfluencersPage() {
 
   useEffect(() => {
     loadIndexData();
+  }, []); // 只在组件挂载时加载一次
+
+  useEffect(() => {
     loadInfluencers();
-  }, [filters.page, filters.platform_id, filters.is_deleted, filters.source, filters.tag]); // 移除 filters.search，避免实时搜索
+  }, [filters.page, filters.platform_id, filters.is_deleted, filters.source, filters.tag]); // 当过滤条件变化时重新加载
 
   const loadIndexData = async () => {
     try {
@@ -477,11 +480,11 @@ export default function InfluencersPage() {
             <select
               className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
               value={filters.tag}
-              onChange={(e) => setFilters(prev => ({ ...prev, tag: parseInt(e.target.value) }))}
+              onChange={(e) => setFilters(prev => ({ ...prev, tag: e.target.value }))}
             >
-              <option value={0}>所有标签</option>
+              <option value="">所有标签</option>
               {indexData.influencer_tag_list.map(tag => (
-                <option key={tag.id} value={tag.id}>{tag.name}</option>
+                <option key={tag.id} value={tag.id.toString()}>{tag.name}</option>
               ))}
             </select>
             
@@ -519,7 +522,7 @@ export default function InfluencersPage() {
               <p className="text-gray-500">暂无达人数据</p>
             </div>
           ) : (
-            <>
+            <React.Fragment key="influencer-list">
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 p-6">
                 {influencers.map((influencer) => (
                   <div key={influencer.id} className="bg-gray-50 rounded-lg p-4 hover:shadow-md transition-shadow">
@@ -571,9 +574,9 @@ export default function InfluencersPage() {
                     {/* Tags */}
                     <div className="mb-4">
                       <div className="flex flex-wrap gap-1">
-                        {influencer.tags?.slice(0, 3).map((tag) => (
+                        {influencer.tags?.slice(0, 3).map((tag, index) => (
                           <span
-                            key={tag.id}
+                            key={tag.id || `tag-${influencer.id}-${index}`}
                             className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800"
                           >
                             {tag.name}
@@ -646,7 +649,7 @@ export default function InfluencersPage() {
                   </div>
                 </div>
               </div>
-            </>
+            </React.Fragment>
           )}
         </div>
 

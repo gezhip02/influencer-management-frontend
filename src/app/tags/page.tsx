@@ -5,7 +5,6 @@ import { Tag, Plus, Search, Grid, List, Edit, Trash2, Users } from 'lucide-react
 import { tagService } from '@/services';
 import type { 
   Tag as TagType, 
-  TagListRequest, 
   TagIndexResponse,
   TagEditRequest 
 } from '@/types';
