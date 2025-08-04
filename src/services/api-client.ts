@@ -18,8 +18,8 @@ const getBaseURL = () => {
   if (process.env.NODE_ENV === 'development') {
     return '/api';
   }
-  // 生产环境使用完整URL
-  return process.env.NEXT_PUBLIC_API_BASE_URL || '/api';
+  // 生产环境（静态导出）使用完整URL
+  return process.env.NEXT_PUBLIC_API_BASE_URL || 'https://www.knnector.com/api';
 };
 
 const API_CONFIG = {
@@ -36,9 +36,13 @@ const apiClient: AxiosInstance = axios.create(API_CONFIG);
 // 请求拦截器
 apiClient.interceptors.request.use(
   async (config) => {
+    // 确保在客户端环境下执行
+    if (typeof window === 'undefined') {
+      return config;
+    }
+    
     // 开发环境下等待MSW准备就绪
-    if (typeof window !== 'undefined' && 
-        process.env.NODE_ENV === 'development' && 
+    if (process.env.NODE_ENV === 'development' && 
         process.env.NEXT_PUBLIC_USE_MOCK !== 'false' &&
         ensureWorkerReady) {
       try {
@@ -50,9 +54,13 @@ apiClient.interceptors.request.use(
     }
     
     // 添加认证 token（如果存在）
-    const token = localStorage.getItem('auth_token');
-    if (token) {
-      config.headers.Authorization = `Bearer ${token}`;
+    try {
+      const token = localStorage.getItem('auth_token');
+      if (token) {
+        config.headers.Authorization = `Bearer ${token}`;
+      }
+    } catch (error) {
+      console.warn('⚠️ 无法获取认证token:', error);
     }
     
     // 开发环境日志
@@ -105,9 +113,13 @@ apiClient.interceptors.response.use(
       switch (status) {
         case 401:
           // 未授权，清除 token 并跳转登录
-          localStorage.removeItem('auth_token');
-          if (typeof window !== 'undefined') {
-            window.location.href = '/login';
+          try {
+            localStorage.removeItem('auth_token');
+            if (typeof window !== 'undefined') {
+              window.location.href = '/login';
+            }
+          } catch (error) {
+            console.warn('⚠️ 无法清除认证token或跳转登录页:', error);
           }
           break;
         case 403:

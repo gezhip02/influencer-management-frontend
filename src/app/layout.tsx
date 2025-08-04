@@ -3,6 +3,7 @@ import { Inter } from 'next/font/google';
 import './globals.css';
 import { NavigationProvider } from '@/components/navigation-provider';
 import { AuthProvider } from '@/components/auth-provider';
+import { ErrorBoundary } from '@/components/error-boundary';
 import '@/mocks';
 
 const inter = Inter({ subsets: ['latin'] });
@@ -21,11 +22,13 @@ export default function RootLayout({
   return (
     <html lang="zh-CN">
       <body className={inter.className}>
-        <AuthProvider>
-          <NavigationProvider>
-            {children}
-          </NavigationProvider>
-        </AuthProvider>
+        <ErrorBoundary>
+          <AuthProvider>
+            <NavigationProvider>
+              {children}
+            </NavigationProvider>
+          </AuthProvider>
+        </ErrorBoundary>
       </body>
     </html>
   );

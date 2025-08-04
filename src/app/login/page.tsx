@@ -30,6 +30,7 @@ export default function LoginPage() {
       // 验证必填字段
       if (!formData.password) {
         setError('请填写密码');
+        setLoading(false);
         return;
       }
 
@@ -37,6 +38,7 @@ export default function LoginPage() {
         // 主账号登录
         if (!formData.account) {
           setError('请填写主账号');
+          setLoading(false);
           return;
         }
         formData.is_sub_user = false;
@@ -45,17 +47,24 @@ export default function LoginPage() {
         // 子账号登录
         if (!formData.account) {
           setError('请填写子账号');
+          setLoading(false);
           return;
         }
         if (!formData.main_user_account) {
           setError('请填写主账号');
+          setLoading(false);
           return;
         }
         formData.is_sub_user = true;
       }
 
+      console.log('🔍 登录请求数据:', formData);
+      console.log('🔍 API基础URL:', process.env.NEXT_PUBLIC_API_BASE_URL || 'https://www.knnector.com/api');
+
       // 调用登录接口
       const response = await authService.login(formData);
+      
+      console.log('✅ 登录响应:', response);
       
       if (response.token) {
         // 登录成功，跳转到首页
@@ -64,8 +73,25 @@ export default function LoginPage() {
         setError('登录失败，请检查账号和密码');
       }
     } catch (err: unknown) {
-      console.error('Login error:', err);
-      setError((err as Error)?.message || '登录失败，请检查账号和密码');
+      console.error('❌ 登录错误:', err);
+      let errorMessage = '登录失败，请检查账号和密码';
+      
+      if (err instanceof Error) {
+        // 处理不同类型的错误
+        if (err.message.includes('Network Error') || err.message.includes('fetch') || err.message.includes('Failed to fetch')) {
+          errorMessage = '网络连接失败，请检查网络连接或稍后重试';
+        } else if (err.message.includes('400')) {
+          errorMessage = '请求参数错误，请检查输入信息';
+        } else if (err.message.includes('401')) {
+          errorMessage = '账号或密码错误';
+        } else if (err.message.includes('500')) {
+          errorMessage = '服务器错误，请稍后重试';
+        } else {
+          errorMessage = err.message;
+        }
+      }
+      
+      setError(errorMessage);
     } finally {
       setLoading(false);
     }

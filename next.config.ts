@@ -10,21 +10,45 @@ import type { NextConfig } from "next";
 //   // assetPrefix: '/_next/', 
 // };
 
-const nextConfig: NextConfig = {
-  // 配置API代理以解决跨域问题
-  async rewrites() {
-    return [
-      {
-        source: '/api/:path*',
-        destination: 'http://localhost:8080/api/:path*',
-      },
-    ];
-  },
+// const nextConfig: NextConfig = {
+//   // 配置API代理以解决跨域问题
+//   async rewrites() {
+//     return [
+//       {
+//         source: '/api/:path*',
+//         destination: 'http://localhost:8080/api/:path*',
+//       },
+//     ];
+//   },
   
-  // 开发环境下的额外配置
+//   // 开发环境下的额外配置
+//   ...(process.env.NODE_ENV === 'development' && {
+//     experimental: {
+//       // 启用并发功能（可选）
+//     },
+//   }),
+// };
+
+
+const nextConfig: NextConfig = {
+  // 只在明确需要静态导出时启用
+  ...(process.env.STATIC_EXPORT === 'true' && {
+    output: 'export',
+    trailingSlash: true,
+    images: {
+      unoptimized: true
+    }
+  }),
+  
+  // 开发环境使用 rewrites，生产环境通过 Nginx 代理
   ...(process.env.NODE_ENV === 'development' && {
-    experimental: {
-      // 启用并发功能（可选）
+    async rewrites() {
+      return [
+        {
+          source: '/api/:path*',
+          destination: 'http://localhost:8080/api/:path*',
+        },
+      ];
     },
   }),
 };

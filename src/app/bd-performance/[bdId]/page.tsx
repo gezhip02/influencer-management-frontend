@@ -1,7 +1,21 @@
-import { use } from 'react';
+export async function generateStaticParams() {
+  // For BD performance pages, we'll generate common BD IDs
+  // You can modify this to fetch actual BD IDs from your API
+  return [
+    { bdId: '1' },
+    { bdId: '2' },
+    { bdId: '3' },
+    { bdId: '4' },
+    { bdId: '5' },
+  ];
+}
 
-export default function BdDetailPage({ params }: { params: Promise<{ bdId: string }> }) {
-  const { bdId } = use(params);
+interface PageProps {
+  params: Promise<{ bdId: string }>;
+}
+
+export default async function BdDetailPage({ params }: PageProps) {
+  const { bdId } = await params;
   
   return (
     <div className="min-h-screen bg-gray-50 p-6">
